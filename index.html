@@ -1,14 +1,18 @@
-<video id="cam" autoplay playsinline style="width: 250px; border-radius: 10px; background: #000;"></video>
-<br>
-<button onclick="openCam()" style="margin-top: 5px;">📷 開啟鏡頭</button>
+<button onclick="startSTT()" style="padding: 10px; background: #e53935; color: white; border: none; border-radius: 8px;">
+  🎤 開始廣東話語音輸入
+</button>
+<p id="sttResult" style="font-family: sans-serif; margin-top: 10px; font-weight: bold;"></p>
 
 <script>
-  async function openCam() {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-      document.getElementById('cam').srcObject = stream;
-    } catch (err) {
-      alert("鏡頭存取被拒絕（在 Google Sites 嵌入框內會失敗）: " + err);
-    }
+  function startSTT() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) return alert("請使用 Google Chrome 瀏覽器");
+
+    const rec = new SpeechRecognition();
+    rec.lang = 'zh-HK';
+    rec.onresult = (e) => {
+      document.getElementById('sttResult').innerText = "辨識結果：" + e.results[0][0].transcript;
+    };
+    rec.start();
   }
 </script>
