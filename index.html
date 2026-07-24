@@ -1,15 +1,553 @@
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>SEN & Classroom Interactive Multi-Toolbox Hub</title>
+  
+  <!-- MediaPipe CDN Dependencies for Vision AI -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
 
-<video id="v" style="display:none;"></video>
-<canvas id="outCvs" width="200" height="150" style="background:#000; border-radius:8px;"></canvas>
-<p id="aiStatus">AI 準備中...</p>
+  <style>
+    :root {
+      --primary: #1976d2;
+      --accent: #ff9800;
+      --bg: #f4f7fa;
+      --card-bg: #ffffff;
+      --text: #2c3e50;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 15px;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: var(--card-bg);
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+    }
+
+    h1 {
+      text-align: center;
+      color: var(--primary);
+      margin-top: 0;
+      font-size: 1.8rem;
+    }
+
+    /* TAB NAVIGATION */
+    .nav-tabs {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 10px;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #eee;
+    }
+
+    .tab-btn {
+      padding: 10px 16px;
+      border: none;
+      background: #e3f2fd;
+      color: var(--primary);
+      font-weight: bold;
+      border-radius: 12px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn.active {
+      background: var(--primary);
+      color: white;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(25, 118, 210, 0.3);
+    }
+
+    .tab-content {
+      display: none;
+      animation: fadeIn 0.3s ease-in-out;
+    }
+
+    .tab-content.active { display: block; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* GRID & CARDS */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 15px;
+    }
+
+    .card {
+      background: #fafafa;
+      border: 2px solid #e0e0e0;
+      border-radius: 15px;
+      padding: 15px;
+      margin-bottom: 15px;
+    }
+
+    .card h3 {
+      margin-top: 0;
+      color: #424242;
+      font-size: 1.1rem;
+      border-bottom: 2px dashed #ddd;
+      padding-bottom: 8px;
+    }
+
+    /* BUTTONS & INPUTS */
+    .btn {
+      padding: 10px 16px;
+      border: none;
+      border-radius: 10px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: transform 0.1s;
+      font-size: 0.95rem;
+    }
+
+    .btn:active { transform: scale(0.96); }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-accent { background: var(--accent); color: white; }
+    .btn-danger { background: #ef5350; color: white; }
+    .btn-success { background: #66bb6a; color: white; }
+
+    input, select, textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      font-family: inherit;
+    }
+
+    /* CANVAS & VIDEO SURFACES */
+    canvas, video {
+      max-width: 100%;
+      border-radius: 10px;
+      background: #000;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>🛠️ SEN & Classroom Interactive Hub</h1>
+
+  <!-- TAB NAVIGATION -->
+  <div class="nav-tabs">
+    <button class="tab-btn active" onclick="switchTab('tab-sensory')">🎵 音樂與感官 (Sensory)</button>
+    <button class="tab-btn" onclick="switchTab('tab-art')">🎨 藝術與情緒 (Art & Emotion)</button>
+    <button class="tab-btn" onclick="switchTab('tab-classroom')">⏱️ 課堂與管理 (Classroom)</button>
+    <button class="tab-btn" onclick="switchTab('tab-speech')">🎤 語音與數據 (Speech & Data)</button>
+    <button class="tab-btn" onclick="switchTab('tab-hardware')">📱 硬件與 AI (Hardware & AI)</button>
+  </div>
+
+  <!-- ==================== TAB 1: SENSORY & AUDIO ==================== -->
+  <div id="tab-sensory" class="tab-content active">
+    <div class="grid-2">
+      <!-- 1. Piano Keypad -->
+      <div class="card">
+        <h3>1. 🎹 迷你合成鋼琴 (Synthesized Piano)</h3>
+        <div style="display: flex; justify-content: center; gap: 4px;">
+          <button class="btn" style="height:100px; background:#fff; color:#000; border:1px solid #ccc;" onclick="playPiano(261.63)">C4</button>
+          <button class="btn" style="height:100px; background:#fff; color:#000; border:1px solid #ccc;" onclick="playPiano(293.66)">D4</button>
+          <button class="btn" style="height:100px; background:#fff; color:#000; border:1px solid #ccc;" onclick="playPiano(329.63)">E4</button>
+          <button class="btn" style="height:100px; background:#fff; color:#000; border:1px solid #ccc;" onclick="playPiano(349.23)">F4</button>
+          <button class="btn" style="height:100px; background:#fff; color:#000; border:1px solid #ccc;" onclick="playPiano(392.00)">G4</button>
+          <button class="btn" style="height:100px; background:#fff; color:#000; border:1px solid #ccc;" onclick="playPiano(440.00)">A4</button>
+          <button class="btn" style="height:100px; background:#ffecb3; color:#000; border:1px solid #ccc;" onclick="playPiano(523.25)">C5</button>
+        </div>
+      </div>
+
+      <!-- 6. Sensory Bubble Popper -->
+      <div class="card">
+        <h3>6. 🧼 紓壓泡泡紙 (Sensory Bubble Popper)</h3>
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; text-align: center;">
+          <button class="btn" style="width:50px; height:50px; border-radius:50%; background:#26c6da; box-shadow:0 4px #0097a7;" onclick="popBubble(this)"></button>
+          <button class="btn" style="width:50px; height:50px; border-radius:50%; background:#26c6da; box-shadow:0 4px #0097a7;" onclick="popBubble(this)"></button>
+          <button class="btn" style="width:50px; height:50px; border-radius:50%; background:#26c6da; box-shadow:0 4px #0097a7;" onclick="popBubble(this)"></button>
+          <button class="btn" style="width:50px; height:50px; border-radius:50%; background:#26c6da; box-shadow:0 4px #0097a7;" onclick="popBubble(this)"></button>
+        </div>
+      </div>
+
+      <!-- 11. Breathing Hexagon -->
+      <div class="card" style="text-align: center;">
+        <h3>11. 🫁 六角形導引呼吸 (Guided Breathing)</h3>
+        <div id="bHex" style="width:90px; height:90px; background:#80cbc4; border-radius:20%; margin:10px auto; transition:all 3s ease-in-out; display:flex; align-items:center; justify-content:center; color:white; font-weight:bold;">
+          準備
+        </div>
+        <button class="btn btn-primary" onclick="runBreathingCycle()">▶️ 開始呼吸</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== TAB 2: ART & EMOTION ==================== -->
+  <div id="tab-art" class="tab-content">
+    <!-- 2. Multi-Color Canvas -->
+    <div class="card">
+      <h3>2. 🎨 多功能畫板工作室 (Multi-Color Art Studio)</h3>
+      <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px; flex-wrap:wrap;">
+        <button onclick="setBrush('#e53935')" style="width:28px; height:28px; background:#e53935; border:none; border-radius:50%; cursor:pointer;"></button>
+        <button onclick="setBrush('#4caf50')" style="width:28px; height:28px; background:#4caf50; border:none; border-radius:50%; cursor:pointer;"></button>
+        <button onclick="setBrush('#1e88e5')" style="width:28px; height:28px; background:#1e88e5; border:none; border-radius:50%; cursor:pointer;"></button>
+        <button onclick="setBrush('#fbc02d')" style="width:28px; height:28px; background:#fbc02d; border:none; border-radius:50%; cursor:pointer;"></button>
+        <input type="color" id="customColor" onchange="setBrush(this.value)" style="width:32px; height:32px; padding:0; border:none; cursor:pointer;">
+        <button class="btn" style="background:#fff; border:1px solid #ccc;" onclick="setBrush('#ffffff')">🧹 擦膠</button>
+        <button class="btn btn-danger" onclick="clearArt()">🗑️ 清空</button>
+      </div>
+      <canvas id="artCanvas" width="500" height="220" style="background:#fff; border:2px solid #ccc; touch-action:none; cursor:crosshair;"></canvas>
+    </div>
+
+    <div class="grid-2">
+      <!-- 4. Emotion Zones -->
+      <div class="card">
+        <h3>4. 🌡️ 今日心情 Check-In (Emotion Zones)</h3>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px;">
+          <button class="btn" style="background:#90caf9;" onclick="selectZone('藍區 (傷心/累)', '#90caf9', '建議：喝水放鬆')">🔵 藍區</button>
+          <button class="btn" style="background:#a5d6a7;" onclick="selectZone('綠區 (平靜/專心)', '#a5d6a7', '非常好！準備學習')">🟢 綠區</button>
+          <button class="btn" style="background:#fff59d;" onclick="selectZone('黃區 (焦慮/興奮)', '#fff59d', '建議：拉伸放慢')">🟡 黃區</button>
+          <button class="btn" style="background:#ef9a9a;" onclick="selectZone('紅區 (憤怒/失控)', '#ef9a9a', '建議：尋求老師協助')">🔴 紅區</button>
+        </div>
+        <div id="zoneBox" style="margin-top:8px; padding:8px; border-radius:8px; display:none; font-weight:bold;"></div>
+      </div>
+
+      <!-- 7. Cantonese Flashcards -->
+      <div class="card" style="text-align:center;">
+        <h3>7. 🔊 廣東話詞彙卡 (Flashcard Reader)</h3>
+        <div id="flashCard" style="background:#fff3e0; border:2px solid #ffb74d; border-radius:10px; padding:15px; font-size:1.5rem; font-weight:bold; color:#e65100; margin-bottom:8px;">
+          🍎 蘋果 (Apple)
+        </div>
+        <button class="btn btn-accent" onclick="speakCard()">🔊 讀出詞彙</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== TAB 3: CLASSROOM MANAGEMENT ==================== -->
+  <div id="tab-classroom" class="tab-content">
+    <div class="grid-2">
+      <!-- 3. Visual Timer -->
+      <div class="card" style="text-align:center;">
+        <h3>3. ⏰ 倒數計時器 (Visual Timer)</h3>
+        <h2 id="timeText" style="font-size:2rem; margin:10px 0; color:#1976d2;">01:00</h2>
+        <button class="btn btn-primary" onclick="startVisualTimer(60)">▶️ 開始 1 分鐘倒數</button>
+      </div>
+
+      <!-- 8. Student Spinner -->
+      <div class="card" style="text-align:center;">
+        <h3>8. 🎲 課堂隨機抽籤器 (Random Spinner)</h3>
+        <div id="selectedStudent" style="font-size:1.3rem; font-weight:bold; color:#7b1fa2; margin:10px 0;">點擊按鈕抽籤</div>
+        <button class="btn" style="background:#ab47bc; color:white;" onclick="pickStudent()">🎯 抽一位同學</button>
+      </div>
+
+      <!-- 9. Star Counter -->
+      <div class="card" style="text-align:center;">
+        <h3>9. ⭐ 星星獎勵銀行 (Token Bank)</h3>
+        <div id="starVal" style="font-size:2rem; font-weight:bold; color:#fbc02d; margin:5px 0;">0</div>
+        <button class="btn" style="background:#fbc02d; color:white;" onclick="addStar(1)">+1 ⭐</button>
+        <button class="btn" style="background:#e0e0e0;" onclick="addStar(-1)">-1</button>
+      </div>
+
+      <!-- 12. Native Modal -->
+      <div class="card" style="text-align:center;">
+        <h3>12. 📝 原生評估彈窗 (Native Modal)</h3>
+        <button class="btn btn-primary" onclick="document.getElementById('diagModal').showModal()">開啟評估視窗</button>
+        <dialog id="diagModal" style="border-radius:15px; border:2px solid #1976d2; padding:20px;">
+          <h3 style="margin-top:0;">📝 課堂小結</h3>
+          <p>你覺得今天的任務難嗎？</p>
+          <button class="btn btn-success" onclick="document.getElementById('diagModal').close()">容易</button>
+          <button class="btn btn-accent" onclick="document.getElementById('diagModal').close()">適中</button>
+        </dialog>
+      </div>
+    </div>
+
+    <!-- 5. Guided Notepad -->
+    <div class="card" style="margin-top:15px;">
+      <h3>5. 📝 導引筆記本 (Guided Notepad)</h3>
+      <div style="margin-bottom:6px;">
+        <button class="btn" style="background:#eee;" onclick="document.execCommand('bold')"><b>B</b></button>
+        <button class="btn" style="background:#eee;" onclick="document.execCommand('underline')"><u>U</u></button>
+      </div>
+      <div id="editor" contenteditable="true" oninput="updateCount()" style="min-height:70px; padding:8px; border:1px solid #ccc; border-radius:8px; background:#fff;">直接點擊這裡輸入文字...</div>
+      <div id="charCount" style="font-size:0.85rem; color:#666; margin-top:4px; text-align:right;">字數：0</div>
+    </div>
+  </div>
+
+  <!-- ==================== TAB 4: SPEECH & DATA ==================== -->
+  <div id="tab-speech" class="tab-content">
+    <div class="grid-2">
+      <!-- 14. Cantonese STT -->
+      <div class="card">
+        <h3>14. 🎤 廣東話語音輸入 (Speech-to-Text)</h3>
+        <button class="btn btn-danger" style="width:100%;" onclick="startCantoneseSTT()">🎤 開始語音輸入</button>
+        <textarea id="sttOutput" rows="3" style="margin-top:8px;" placeholder="語音文字將顯示在這裡..."></textarea>
+      </div>
+
+      <!-- 10. Clipboard Report Generator -->
+      <div class="card">
+        <h3>10. 📋 課堂紀錄速記 (Report Generator)</h3>
+        <input type="text" id="sName" placeholder="學生姓名">
+        <select id="sBehavior">
+          <option>安坐專心</option>
+          <option>積極回答問題</option>
+          <option>主動協助同學</option>
+        </select>
+        <button class="btn btn-success" style="width:100%;" onclick="copyReport()">📋 複製紀錄到剪貼簿</button>
+      </div>
+    </div>
+
+    <!-- 16. CSV Exporter -->
+    <div class="card" style="text-align:center;">
+      <h3>16. 📥 匯出學習日誌 (CSV Exporter)</h3>
+      <button class="btn btn-success" onclick="exportClassCSV()">📥 下載 CSV 數據檔案</button>
+    </div>
+  </div>
+
+  <!-- ==================== TAB 5: HARDWARE & AI (GitHub Pages Required) ==================== -->
+  <div id="tab-hardware" class="tab-content">
+    <div class="grid-2">
+      <!-- 13. Gyro Balance Game -->
+      <div class="card" style="text-align:center;">
+        <h3>13. 🧭 手機平衡感應 (Gyroscope Game)</h3>
+        <button class="btn btn-primary" onclick="initTiltSensor()" style="margin-bottom:8px;">權授並啟動感應器</button>
+        <div style="width:160px; height:160px; border:2px solid #1976d2; border-radius:12px; margin:auto; position:relative; background:#fff;">
+          <div id="ball" style="width:20px; height:20px; background:#ef5350; border-radius:50%; position:absolute; top:70px; left:70px; transition:all 0.1s;"></div>
+        </div>
+        <p id="tiltStatus" style="font-size:0.8rem; color:#666; margin-top:4px;">請傾斜手機控制小球</p>
+      </div>
+
+      <!-- 15. Webcam Mirror -->
+      <div class="card" style="text-align:center;">
+        <h3>15. 📷 情緒鏡頭 (Webcam Mirror)</h3>
+        <video id="vMirror" autoplay playsinline style="width:200px; height:140px;"></video>
+        <br><button class="btn btn-primary" style="margin-top:6px;" onclick="startCamMirror()">📷 開啟鏡頭</button>
+      </div>
+
+      <!-- 18. Haptic Vibration -->
+      <div class="card" style="text-align:center;">
+        <h3>18. 📳 觸覺震動回饋 (Haptic Feedback)</h3>
+        <button class="btn" style="background:#8e24aa; color:white;" onclick="vibratePattern()">📳 觸覺震動</button>
+      </div>
+
+      <!-- 19. Web Bluetooth -->
+      <div class="card" style="text-align:center;">
+        <h3>19. 📡 藍牙裝置掃描 (Web Bluetooth)</h3>
+        <button class="btn btn-primary" onclick="scanBLEDevice()">📡 搜尋藍牙裝置</button>
+        <p id="bleText" style="font-size:0.8rem; color:#555; margin-top:4px;"></p>
+      </div>
+
+      <!-- 20. System Notifications -->
+      <div class="card" style="text-align:center;">
+        <h3>20. 🔔 桌面系統提醒 (Notification)</h3>
+        <button class="btn btn-accent" onclick="triggerNotification()">🔔 發送休息提醒</button>
+      </div>
+    </div>
+
+    <!-- 17. MediaPipe AI Vision -->
+    <div class="card" style="text-align:center; margin-top:15px;">
+      <h3>17. ✋ 視覺 AI 手勢偵測 (MediaPipe Vision AI)</h3>
+      <video id="aiCam" style="display:none;"></video>
+      <canvas id="aiCanvas" width="240" height="160"></canvas>
+      <p id="handText" style="font-weight:bold; color:#1976d2;">AI 載入中...</p>
+    </div>
+  </div>
+
+</div>
 
 <script>
-  const hands = new Hands({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}` });
-  hands.setOptions({ maxNumHands: 1, minDetectionConfidence: 0.5 });
-  hands.onResults(res => {
-    document.getElementById('aiStatus').innerText = (res.multiHandLandmarks.length > 0) ? "✋ 偵測到手部！" : "🔍 尋找手部中...";
+  // ==================== TAB NAVIGATION ====================
+  function switchTab(tabId) {
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(tabId).classList.add('active');
+    event.currentTarget.classList.add('active');
+  }
+
+  // ==================== 1. PIANO ====================
+  function playPiano(freq) {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator(), gain = ctx.createGain();
+    osc.type = 'triangle'; osc.frequency.setValueAtTime(freq, ctx.currentTime);
+    gain.gain.setValueAtTime(0.8, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.2);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(); osc.stop(ctx.currentTime + 1.2);
+  }
+
+  // ==================== 2. CANVAS ART STUDIO ====================
+  const cvs = document.getElementById('artCanvas'), cCtx = cvs.getContext('2d');
+  let isDrawing = false, curColor = '#e53935';
+  cCtx.lineWidth = 4; cCtx.lineCap = 'round';
+  function setBrush(color) { curColor = color; }
+  function clearArt() { cCtx.fillStyle = "white"; cCtx.fillRect(0, 0, cvs.width, cvs.height); }
+  function getPos(e) {
+    const r = cvs.getBoundingClientRect();
+    return { x: (e.touches ? e.touches[0].clientX : e.clientX) - r.left, y: (e.touches ? e.touches[0].clientY : e.clientY) - r.top };
+  }
+  const startDraw = (e) => { e.preventDefault(); isDrawing = true; cCtx.beginPath(); const p = getPos(e); cCtx.moveTo(p.x, p.y); };
+  const moveDraw = (e) => {
+    if(!isDrawing) return; e.preventDefault(); const p = getPos(e);
+    cCtx.strokeStyle = curColor; cCtx.lineWidth = curColor === '#ffffff' ? 20 : 4;
+    cCtx.lineTo(p.x, p.y); cCtx.stroke();
+  };
+  const stopDraw = () => isDrawing = false;
+  cvs.addEventListener('mousedown', startDraw); cvs.addEventListener('mousemove', moveDraw); window.addEventListener('mouseup', stopDraw);
+  cvs.addEventListener('touchstart', startDraw); cvs.addEventListener('touchmove', moveDraw); window.addEventListener('touchend', stopDraw);
+  clearArt();
+
+  // ==================== 3. VISUAL TIMER ====================
+  let tInterval = null;
+  function startVisualTimer(sec) {
+    if(tInterval) clearInterval(tInterval);
+    let rem = sec;
+    tInterval = setInterval(() => {
+      rem--;
+      const m = Math.floor(rem / 60), s = rem % 60;
+      document.getElementById('timeText').innerText = `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+      if(rem <= 0) { clearInterval(tInterval); alert("⏰ 時間到！做得很棒！"); }
+    }, 1000);
+  }
+
+  // ==================== 4. EMOTION ZONES ====================
+  function selectZone(name, color, tip) {
+    const box = document.getElementById('zoneBox');
+    box.style.display = 'block'; box.style.background = color;
+    box.innerHTML = `狀態：${name}<br><small style="font-weight:normal;">${tip}</small>`;
+  }
+
+  // ==================== 5. GUIDED NOTEPAD ====================
+  function updateCount() {
+    const txt = document.getElementById('editor').innerText;
+    document.getElementById('charCount').innerText = `字數：${txt.replace(/\s/g, '').length}`;
+  }
+
+  // ==================== 6. BUBBLE POPPER ====================
+  function popBubble(btn) {
+    btn.style.background = '#b2ebf2'; btn.style.boxShadow = 'none';
+    const a = new (window.AudioContext || window.webkitAudioContext)();
+    const o = a.createOscillator(), g = a.createGain();
+    o.frequency.setValueAtTime(800, a.currentTime);
+    o.frequency.exponentialRampToValueAtTime(300, a.currentTime + 0.05);
+    g.gain.setValueAtTime(0.2, a.currentTime); g.gain.linearRampToValueAtTime(0.01, a.currentTime + 0.05);
+    o.connect(g); g.connect(a.destination); o.start(); o.stop(a.currentTime + 0.05);
+  }
+
+  // ==================== 7. FLASHCARD TTS ====================
+  function speakCard() {
+    const u = new SpeechSynthesisUtterance("蘋果"); u.lang = 'zh-HK'; u.rate = 0.85;
+    window.speechSynthesis.speak(u);
+  }
+
+  // ==================== 8. SPINNER ====================
+  function pickStudent() {
+    const s = ["同學 A", "同學 B", "同學 C", "同學 D"];
+    document.getElementById('selectedStudent').innerText = "🎉 " + s[Math.floor(Math.random()*s.length)];
+  }
+
+  // ==================== 9. STAR COUNTER ====================
+  let stars = parseInt(localStorage.getItem('userStars') || '0');
+  document.getElementById('starVal').innerText = stars;
+  function addStar(n) {
+    stars = Math.max(0, stars + n);
+    localStorage.setItem('userStars', stars);
+    document.getElementById('starVal').innerText = stars;
+  }
+
+  // ==================== 10. CLIPBOARD REPORT ====================
+  function copyReport() {
+    const n = document.getElementById('sName').value || "學生";
+    const b = document.getElementById('sBehavior').value;
+    navigator.clipboard.writeText(`【課堂紀錄】\n時間: ${new Date().toLocaleTimeString()}\n學生: ${n}\n表現: ${b}`).then(()=>alert("已複製！"));
+  }
+
+  // ==================== 11. BREATHING HEXAGON ====================
+  function runBreathingCycle() {
+    const h = document.getElementById('bHex');
+    h.innerText = "吸氣..."; h.style.transform = "scale(1.5)";
+    setTimeout(() => { h.innerText = "呼氣..."; h.style.transform = "scale(1)"; }, 3000);
+  }
+
+  // ==================== 13. GYROSCOPE BALANCE ====================
+  async function initTiltSensor() {
+    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+      const p = await DeviceOrientationEvent.requestPermission();
+      if (p === 'granted') window.addEventListener('deviceorientation', handleOrient);
+    } else {
+      window.addEventListener('deviceorientation', handleOrient);
+    }
+  }
+  function handleOrient(e) {
+    const ball = document.getElementById('ball');
+    let x = Math.min(Math.max(70 + (e.gamma||0)*1.2, 0), 140);
+    let y = Math.min(Math.max(70 + (e.beta||0)*1.2, 0), 140);
+    ball.style.left = x + 'px'; ball.style.top = y + 'px';
+  }
+
+  // ==================== 14. CANTONESE STT ====================
+  function startCantoneseSTT() {
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if(!SpeechRec) return alert("請使用 Chrome 瀏覽器");
+    const rec = new SpeechRec(); rec.lang = 'zh-HK';
+    rec.onresult = (e) => { document.getElementById('sttOutput').value += e.results[0][0].transcript; };
+    rec.start();
+  }
+
+  // ==================== 15. WEBCAM MIRROR ====================
+  async function startCamMirror() {
+    try {
+      const s = await navigator.mediaDevices.getUserMedia({ video: true });
+      document.getElementById('vMirror').srcObject = s;
+    } catch(e) { alert("鏡頭權限被拒絕"); }
+  }
+
+  // ==================== 16. CSV EXPORTER ====================
+  function exportClassCSV() {
+    const blob = new Blob(["\uFEFF" + `日期,學生,得分\n${new Date().toLocaleDateString()},同學A,5`], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'Report.csv'; a.click();
+  }
+
+  // ==================== 17. MEDIAPIPE VISION AI ====================
+  const hEngine = new Hands({ locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}` });
+  hEngine.setOptions({ maxNumHands: 1, minDetectionConfidence: 0.5 });
+  hEngine.onResults(r => {
+    document.getElementById('handText').innerText = (r.multiHandLandmarks && r.multiHandLandmarks.length > 0) ? "✋ 成功偵測到手部！" : "🔍 尋找手部中...";
   });
-  new Camera(document.getElementById('v'), { onFrame: async () => { await hands.send({ image: document.getElementById('v') }); }, width: 200, height: 150 }).start();
+  new Camera(document.getElementById('aiCam'), {
+    onFrame: async () => { await hEngine.send({ image: document.getElementById('aiCam') }); }, width: 240, height: 160
+  }).start();
+
+  // ==================== 18. HAPTIC VIBRATION ====================
+  function vibratePattern() { if("vibrate" in navigator) navigator.vibrate([100, 50, 150]); }
+
+  // ==================== 19. WEB BLUETOOTH ====================
+  async function scanBLEDevice() {
+    try {
+      const dev = await navigator.bluetooth.requestDevice({ acceptAllDevices: true });
+      document.getElementById('bleText').innerText = "已連線：" + (dev.name || "未命名裝置");
+    } catch(e) { document.getElementById('bleText').innerText = "不支援或已取消"; }
+  }
+
+  // ==================== 20. NOTIFICATION ====================
+  function triggerNotification() {
+    Notification.requestPermission().then(p => {
+      if(p === 'granted') new Notification("休息提醒 🧘", { body: "請站起來伸展一下！" });
+    });
+  }
 </script>
+</body>
+</html>
