@@ -1,24 +1,10 @@
-<div style="font-family: sans-serif; text-align: center;">
-  <h2 id="timerDisplay">00:10</h2>
-  <button onclick="startTimer()">▶️ 開始倒數 (Start Timer)</button>
-</div>
+<p id="tiltInfo">傾斜角度：待偵測</p>
+<button onclick="trackTilt()">🧭 啟動傾斜感應</button>
 
 <script>
-  let timeLeft = 10;
-  let timerId = null;
-
-  function startTimer() {
-    if (timerId) clearInterval(timerId);
-    timeLeft = 10;
-    document.getElementById('timerDisplay').innerText = `00:${timeLeft < 10 ? '0' : ''}${timeLeft}`;
-    
-    timerId = setInterval(() => {
-      timeLeft--;
-      document.getElementById('timerDisplay').innerText = `00:${timeLeft < 10 ? '0' : ''}${timeLeft}`;
-      if (timeLeft <= 0) {
-        clearInterval(timerId);
-        alert("⏰ 時間到！ (Time is up!)");
-      }
-    }, 1000);
+  function trackTilt() {
+    window.addEventListener('deviceorientation', (e) => {
+      document.getElementById('tiltInfo').innerText = `前後傾斜 (Tilt): ${Math.round(e.beta)}°`;
+    });
   }
 </script>
