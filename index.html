@@ -1,14 +1,57 @@
-<button onclick="vibrateDevice()" style="padding: 10px 20px; background: #8e24aa; color: white; border: none; border-radius: 8px;">
-  📳 觸覺震動回饋
-</button>
+<video id="cam" autoplay playsinline style="width: 250px; border-radius: 10px; background: #000;"></video>
+<br>
+<button onclick="openCam()" style="margin-top: 5px;">📷 開啟鏡頭</button>
 
 <script>
-  function vibrateDevice() {
-    if ("vibrate" in navigator) {
-      // Pattern: Vibrate 100ms, pause 50ms, vibrate 100ms
-      navigator.vibrate([100, 50, 100]);
-    } else {
-      alert("此裝置不支援觸覺震動，或在 Google Sites 嵌入框內被封鎖。");
+  async function openCam() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      document.getElementById('cam').srcObject = stream;
+    } catch (err) {
+      alert("鏡頭存取被拒絕（在 Google Sites 嵌入框內會失敗）: " + err);
     }
   }
+
+<button onclick="startSTT()" style="padding: 10px; background: #e53935; color: white; border: none; border-radius: 8px;">
+  🎤 開始廣東話語音輸入
+</button>
+<p id="sttResult" style="font-family: sans-serif; margin-top: 10px; font-weight: bold;"></p>
+
+<script>
+  function startSTT() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) return alert("請使用 Google Chrome 瀏覽器");
+
+    const rec = new SpeechRecognition();
+    rec.lang = 'zh-HK';
+    rec.onresult = (e) => {
+      document.getElementById('sttResult').innerText = "辨識結果：" + e.results[0][0].transcript;
+    };
+    rec.start();
+  }
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+
+<video id="v" style="display:none;"></video>
+<canvas id="c" width="240" height="180" style="background:#000; border-radius:10px;"></canvas>
+<p id="handState" style="font-family:sans-serif;">鏡頭辨識手勢中...</p>
+
+<script>
+  const v = document.getElementById('v'), c = document.getElementById('c'), ctx = c.getContext('2d');
+  
+  function onResults(res) {
+    ctx.drawImage(res.image, 0, 0, c.width, c.height);
+    document.getElementById('handState').innerText = (res.multiHandLandmarks && res.multiHandLandmarks.length > 0) 
+      ? "✋ 偵測到手勢！" : "🔍 請將手放在鏡頭前...";
+  }
+
+  const hands = new Hands({ locateFile: (f) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${f}` });
+  hands.setOptions({ maxNumHands: 1, minDetectionConfidence: 0.5 });
+  hands.onResults(onResults);
+
+  new Camera(v, { onFrame: async () => { await hands.send({ image: v }); }, width: 240, height: 180 }).start();
+
 </script>
