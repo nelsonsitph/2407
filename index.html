@@ -1,4 +1,24 @@
-<audio id="myAudio" src="https://actions.google.com/sounds/v1/ambiences/rain_heavy.ogg"></audio>
-<button onclick="document.getElementById('myAudio').play()">▶️ Play</button>
-<button onclick="document.getElementById('myAudio').pause()">⏸️ Pause</button>
-<input type="range" min="0.5" max="2" step="0.1" value="1" onchange="document.getElementById('myAudio').playbackRate = this.value"> 速度 (Speed)
+<div style="font-family: sans-serif; text-align: center;">
+  <h2 id="timerDisplay">00:10</h2>
+  <button onclick="startTimer()">▶️ 開始倒數 (Start Timer)</button>
+</div>
+
+<script>
+  let timeLeft = 10;
+  let timerId = null;
+
+  function startTimer() {
+    if (timerId) clearInterval(timerId);
+    timeLeft = 10;
+    document.getElementById('timerDisplay').innerText = `00:${timeLeft < 10 ? '0' : ''}${timeLeft}`;
+    
+    timerId = setInterval(() => {
+      timeLeft--;
+      document.getElementById('timerDisplay').innerText = `00:${timeLeft < 10 ? '0' : ''}${timeLeft}`;
+      if (timeLeft <= 0) {
+        clearInterval(timerId);
+        alert("⏰ 時間到！ (Time is up!)");
+      }
+    }, 1000);
+  }
+</script>
