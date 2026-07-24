@@ -1,0 +1,14 @@
+<button onclick="vibrateDevice()" style="padding: 10px 20px; background: #8e24aa; color: white; border: none; border-radius: 8px;">
+  📳 觸覺震動回饋
+</button>
+
+<script>
+  function vibrateDevice() {
+    if ("vibrate" in navigator) {
+      // Pattern: Vibrate 100ms, pause 50ms, vibrate 100ms
+      navigator.vibrate([100, 50, 100]);
+    } else {
+      alert("此裝置不支援觸覺震動，或在 Google Sites 嵌入框內被封鎖。");
+    }
+  }
+</script>
